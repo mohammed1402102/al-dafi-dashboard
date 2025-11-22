@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة متابعة تنفيذ الأعمال بمدرسة الدفي الابتدائية - مدرسة الدفي</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- مكتبات رئيسية -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.3/css/dataTables.dataTables.min.css">
+    <script src="https://cdn.datatables.net/2.0.3/js/dataTables.min.js"></script>
+
+    <!-- مكتبات التصدير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f1f5f9;
+            direction: rtl;
+        }
+        .app-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: radial-gradient(circle at top right, #2563eb, #0f172a);
+            color: #fff;
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(15,23,42,0.35);
+        }
+        header .title-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.4rem; /* enlarged */
+        }
+        header span {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        .header-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .tag {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            border: 1px solid rgba(148,163,184,0.9);
+            background: rgba(15,23,42,0.45);
+        }
+        main {
+            padding: 16px 10px 22px;
+        }
+        .main-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* KPIs */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0,1fr));
+            gap: 14px;
+            margin: 10px 4px 18px;
+        }
+        @media (max-width: 900px) {
+            .kpi-row {
+                grid-template-columns: repeat(2, minmax(0,1fr));
+            }
+        }
+        .kpi-card {
+            border-radius: 18px;
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+            color: #0f172a;
+        }
+        .kpi-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            opacity: 0.2;
+        }
+        .kpi-green { background: #dcfce7; }
+        .kpi-green::before { background: radial-gradient(circle at top right, #22c55e, transparent); }
+        .kpi-blue { background: #dbeafe; }
+        .kpi-blue::before { background: radial-gradient(circle at top right, #3b82f6, transparent); }
+        .kpi-amber { background: #fef3c7; }
+        .kpi-amber::before { background: radial-gradient(circle at top right, #f59e0b, transparent); }
+        .kpi-inner {
+            position: relative;
+            z-index: 1;
+        }
+        .kpi-label {
+            font-size: 0.85rem;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+        .kpi-sub {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        /* Layout blocks */
+        .top-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(0, 2fr);
+            gap: 14px;
+            margin: 0 4px 16px;
+        }
+        @media (max-width: 1024px) {
+            .top-grid {
+                grid-template-columns: minmax(0,1fr);
+            }
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 14px 16px;
+            box-shadow: 0 1px 4px rgba(15,23,42,0.08);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+        .card-title {
+            font-size: 1.4rem; /* enlarged */
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.9);
+            font-size: 0.75rem;
+            color: #475569;
+            background: #f9fafb;
+        }
+        .header-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .btn-secondary {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #eef2ff;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .btn-secondary:hover {
+            background: #e0e7ff;
+        }
+        .btn-danger {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid #fecaca;
+            background: #fee2e2;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #b91c1c;
+        }
+        .btn-danger:hover {
+            background: #fecaca;
+        }
+
+        /* Form */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0,1fr));
+            gap: 8px 10px;
+            align-items: flex-end;
+            margin-top: 4px;
+        }
+        .form-grid .full { grid-column: span 4; }
+        @media (max-width: 900px) {
+            .form-grid {
+                grid-template-columns: repeat(2, minmax(0,1fr));
+            }
+            .form-grid .full { grid-column: span 2; }
+        }
+        .form-grid label {
+            display: block;
+            font-size: 0.8rem;
+            color: #475569;
+            margin-bottom: 3px;
+        }
+        .form-grid input,
+        .form-grid select,
+        .form-grid textarea {
+            width: 100%;
+            padding: 7px 9px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            font-family: inherit;
+            font-size: 0.85rem;
+            background: #f9fafb;
+        }
+        .form-grid input:focus,
+        .form-grid select:focus,
+        .form-grid textarea:focus {
+            outline: 2px solid #2563eb33;
+            border-color: #2563eb;
+            background: #ffffff;
+        }
+        .form-grid textarea {
+            min-height: 40px;
+            resize: vertical;
+        }
+        .btn-primary {
+            padding: 9px 20px;
+            border-radius: 999px;
+            border: none;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary span.icon {
+            font-size: 1rem;
+        }
+        .btn-primary:hover { filter: brightness(1.05); }
+        .week-date-hint {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        /* Filters & table */
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 4px 0 10px;
+        }
+        .filter-item { min-width: 180px; }
+        .filter-item label {
+            display: block;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+        .filter-item select {
+            width: 100%;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.8rem;
+            background: #f9fafb;
+        }
+        .filter-item select:focus {
+            outline: 2px solid #2563eb33;
+            border-color: #2563eb;
+            background: #ffffff;
+        }
+
+        table.dataTable thead th {
+            background: #e0e7ff;
+        }
+        table.dataTable tbody td {
+            font-size: 0.9rem;
+        }
+        table#tasksTable th:nth-child(4),
+        table#tasksTable td:nth-child(4) {
+            min-width: 160px;
+        }
+        table#tasksTable th:nth-child(5),
+        table#tasksTable td:nth-child(5) {
+            min-width: 170px;
+        }
+        #tasksTable_wrapper {
+            font-size: 0.85rem;
+        }
+        .footer-note {
+            margin-top: 6px;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            text-align: left;
+        }
+        .week-date-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eef2ff;
+            font-size: 0.8rem;
+            color: #1e293b;
+        }
+
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+            gap: 12px;
+        }
+        @media (max-width: 900px) {
+            .charts-grid {
+                grid-template-columns: minmax(0,1fr);
+            }
+        }
+
+        /* زر حذف صف */
+        .btn-delete {
+            border: none;
+            border-radius: 999px;
+            padding: 2px 8px;
+            cursor: pointer;
+            background: transparent;
+            font-size: 1rem;
+        }
+        .btn-delete:hover {
+            background: #fee2e2;
+        }
+
+        /* تلوين الصفوف حسب حالة التنفيذ */
+        .row-done td {
+            background-color: #dcfce7 !important;
+        }
+        .row-progress td {
+            background-color: #fef9c3 !important;
+        }
+        .row-late td {
+            background-color: #fee2e2 !important;
+        }
+    
+    /* login screen */
+    .login-shell {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #003f72, #0f766e);
+        z-index: 9999;
+    }
+    .login-card {
+        background: #f9fafb;
+        color: #0f172a;
+        border-radius: 18px;
+        padding: 24px 22px 20px;
+        width: 100%;
+        max-width: 380px;
+        box-shadow: 0 18px 40px rgba(15,23,42,0.35);
+        border: 1px solid rgba(148,163,184,0.9);
+        text-align: center;
+    }
+    .login-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    .login-subtitle {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-bottom: 14px;
+    }
+    .login-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: rgba(22,163,74,0.10);
+        border: 1px solid rgba(34,197,94,0.7);
+        font-size: 0.7rem;
+        margin-bottom: 14px;
+    }
+    .login-field {
+        text-align: right;
+        margin-bottom: 10px;
+    }
+    .login-field label {
+        display: block;
+        font-size: 0.8rem;
+        margin-bottom: 4px;
+    }
+    .login-field input {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        font-family: inherit;
+        font-size: 0.85rem;
+    }
+    .login-field input:focus {
+        outline: 2px solid #0f766e;
+        border-color: #0f766e;
+    }
+    .login-button {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        background: linear-gradient(135deg, #0f766e, #22c55e);
+        color: #ecfdf5;
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-top: 6px;
+    }
+    .login-button:hover {
+        filter: brightness(1.05);
+    }
+    .login-hint {
+        margin-top: 10px;
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+    .login-error {
+        margin-top: 8px;
+        font-size: 0.8rem;
+        color: #fecaca;
+        background: rgba(239,68,68,0.12);
+        border-radius: 999px;
+        padding: 4px 10px;
+        text-align: center;
+        display: none;
+    }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-shell">
+    <div class="login-card">
+        <div class="login-title">تسجيل الدخول</div>
+        <div class="login-subtitle">لوحة متابعة تنفيذ الأعمال بمدرسة الدفي الابتدائية</div>
+        <div class="login-badge">وصول إداري</div>
+        <form id="loginForm">
+            <div class="login-field">
+                <label for="username">اسم المستخدم</label>
+                <input type="text" id="username" autocomplete="off" placeholder="ادخل اسم المستخدم">
+            </div>
+            <div class="login-field">
+                <label for="password">كلمة المرور</label>
+                <input type="password" id="password" autocomplete="off" placeholder="ادخل كلمة المرور">
+            </div>
+            <button type="submit" class="login-button">دخول</button>
+            <div id="errorBox" class="login-error">بيانات الدخول غير صحيحة</div>
+            <div class="login-hint">
+                اسم المستخدم: <b>admin</b> &mdash; كلمة المرور: <b>12</b>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="app-shell" id="mainApp" style="display:none;">
+
+    <header>
+        <div class="title-block">
+            <h1>لوحة متابعة تنفيذ الأعمال بمدرسة الدفي الابتدائية</h1>
+            <span>إدخال، تعديل، استيراد وتصدير من المتصفح مباشرة</span>
+        </div>
+        <div class="header-tags">
+            <div class="tag">مدرسة الدفي الابتدائية</div>
+            <div class="tag">خطة المتابعة 1447 هـ</div>
+        </div>
+    </header>
+
+    <main>
+        <div class="main-inner">
+
+            <!-- KPIs -->
+            <div class="kpi-row">
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-inner">
+                        <div class="kpi-label">نسبة الإنجاز العامة</div>
+                        <div class="kpi-value" id="kpiCompletion">0%</div>
+                        <div class="kpi-sub">من إجمالي الأعمال المسجلة</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-inner">
+                        <div class="kpi-label">أعمال مكتملة</div>
+                        <div class="kpi-value" id="kpiDone">0</div>
+                        <div class="kpi-sub">حالتها (تم)</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-amber">
+                    <div class="kpi-inner">
+                        <div class="kpi-label">قيد التنفيذ / متأخرة</div>
+                        <div class="kpi-value" id="kpiActive">0</div>
+                        <div class="kpi-sub">تحتاج متابعة</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form + Charts -->
+            <div class="top-grid">
+                <section>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">إضافة عمل جديد</span>
+                            <span class="pill">إدخال سريع</span>
+                        </div>
+                        <form id="taskForm">
+                            <div class="form-grid">
+                                <div class="full">
+                                    <label for="workInput">العمل</label>
+                                    <input id="workInput" name="work" type="text" required autocomplete="off"
+                                           placeholder="مثال: متابعة تفعيل منصة مدرستي للطلاب">
+                                </div>
+                                <div>
+                                    <label for="fieldInput">مجال التنفيذ</label>
+                                    <select id="fieldInput" name="field">
+                                        <option value="مكتبي">مكتبي</option>
+                                        <option value="داخلي">داخلي</option>
+                                        <option value="خارجي">خارجي</option>
+                                        <option value="طلاب">طلاب</option>
+                                        <option value="أنشطة">أنشطة</option>
+                                        <option value="إداري">إداري</option>
+                                        <option value="أخرى">أخرى</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="weekInput">الأسبوع</label>
+                                    <select id="weekInput" name="week" required>
+                                        <option value="">اختر الأسبوع</option>
+                                        <option>الأسبوع التمهيدي</option>
+                                        <option>الأسبوع الأول</option>
+                                        <option>الأسبوع الثاني</option>
+                                        <option>الأسبوع الثالث</option>
+                                        <option>الأسبوع الرابع</option>
+                                        <option>الأسبوع الخامس</option>
+                                        <option>الأسبوع السادس</option>
+                                        <option>الأسبوع السابع</option>
+                                        <option>الأسبوع الثامن</option>
+                                        <option>الأسبوع التاسع</option>
+                                        <option>الأسبوع العاشر</option>
+                                        <option>الأسبوع الحادي عشر</option>
+                                        <option>الأسبوع الثاني عشر</option>
+                                        <option>الأسبوع الثالث عشر</option>
+                                        <option>الأسبوع الرابع عشر</option>
+                                        <option>الأسبوع الخامس عشر</option>
+                                        <option>الأسبوع السادس عشر</option>
+                                        <option>الأسبوع السابع عشر</option>
+                                        <option>الأسبوع الثامن عشر</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>تاريخ الأسبوع</label>
+                                    <div class="week-date-pill" id="weekDateLabel">لم يتم اختيار أسبوع</div>
+                                </div>
+                                <div>
+                                    <label for="ownerInput">المنفذ</label>
+                                    <select id="ownerInput" name="owner">
+                                        <option value="">اختر المنفذ</option>
+                                        <option>مسفر الرشيدي</option>
+                                        <option>صالح القحطاني</option>
+                                        <option>غازي المطيري</option>
+                                        <option>محمد الأحمري</option>
+                                        <option>راشد المري</option>
+                                        <option>يحيى مجرشي</option>
+                                        <option>خالد الشارخ</option>
+                                        <option>عبدالقادر الغامدي</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="statusInput">حالة التنفيذ</label>
+                                    <select id="statusInput" name="status">
+                                        <option>تم</option>
+                                        <option>قيد التنفيذ</option>
+                                        <option>لم يبدأ</option>
+                                        <option>متأخر</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="commentInput">تعليق المسؤول</label>
+                                    <input id="commentInput" name="comment" type="text" autocomplete="off">
+                                </div>
+                                <div class="full">
+                                    <label for="notesInput">ملاحظات</label>
+                                    <textarea id="notesInput" name="notes"></textarea>
+                                </div>
+                                <div class="full" style="text-align:left;">
+                                    <button type="submit" class="btn-primary">
+                                        <span class="icon">＋</span>
+                                        <span>إضافة للعمل</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="week-date-hint">
+                                يتم ضبط التاريخ تلقائيًا حسب جدول الأسابيع المعتمد، ولا حاجة لإدخاله يدويًا.
+                            </p>
+                        </form>
+                    </div>
+                </section>
+
+                <section>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">نظرة عامة سريعة</span>
+                            <span class="pill">حسب المجالات والأسابيع</span>
+                        </div>
+                        <div class="charts-grid">
+                            <div>
+                                <canvas id="fieldChart" height="150"></canvas>
+                            </div>
+                            <div>
+                                <canvas id="weekChart" height="150"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Table -->
+            <section>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">جدول الأعمال التفصيلي</span>
+                        <div class="header-actions">
+                            <button type="button" class="btn-secondary" id="btnImportExcel">استيراد من Excel</button>
+                            <button type="button" class="btn-secondary" id="btnExportExcel">تصدير Excel</button>
+                            <button type="button" class="btn-secondary" id="btnExportPDF">تصدير PDF</button>
+                            <button type="button" class="btn-secondary" id="btnResetFilters">مسح الفلاتر</button>
+                            <button type="button" class="btn-danger" id="btnDeleteAll">حذف جميع السجلات</button>
+                            <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;">
+                        </div>
+                    </div>
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label for="filterWeek">تصفية حسب الأسبوع</label>
+                            <select id="filterWeek">
+                                <option value="">كل الأسابيع</option>
+                                <option>الأسبوع التمهيدي</option>
+                                <option>الأسبوع الأول</option>
+                                <option>الأسبوع الثاني</option>
+                                <option>الأسبوع الثالث</option>
+                                <option>الأسبوع الرابع</option>
+                                <option>الأسبوع الخامس</option>
+                                <option>الأسبوع السادس</option>
+                                <option>الأسبوع السابع</option>
+                                <option>الأسبوع الثامن</option>
+                                <option>الأسبوع التاسع</option>
+                                <option>الأسبوع العاشر</option>
+                                <option>الأسبوع الحادي عشر</option>
+                                <option>الأسبوع الثاني عشر</option>
+                                <option>الأسبوع الثالث عشر</option>
+                                <option>الأسبوع الرابع عشر</option>
+                                <option>الأسبوع الخامس عشر</option>
+                                <option>الأسبوع السادس عشر</option>
+                                <option>الأسبوع السابع عشر</option>
+                                <option>الأسبوع الثامن عشر</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filterOwner">تصفية حسب المنفذ</label>
+                            <select id="filterOwner">
+                                <option value="">كل المنفذين</option>
+                                <option>مسفر الرشيدي</option>
+                                <option>صالح القحطاني</option>
+                                <option>غازي المطيري</option>
+                                <option>محمد الأحمري</option>
+                                <option>راشد المري</option>
+                                <option>يحيى مجرشي</option>
+                                <option>خالد الشارخ</option>
+                                <option>عبدالقادر الغامدي</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filterStatus">تصفية حسب حالة التنفيذ</label>
+                            <select id="filterStatus">
+                                <option value="">كل الحالات</option>
+                                <option>تم</option>
+                                <option>قيد التنفيذ</option>
+                                <option>لم يبدأ</option>
+                                <option>متأخر</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <table id="tasksTable" class="display" style="width:100%">
+                        <thead>
+                        <tr>
+                            <th>م</th>
+                            <th>العمل</th>
+                            <th>المجال</th>
+                            <th>الأسبوع</th>
+                            <th>تاريخ الأسبوع</th>
+                            <th>المنفذ</th>
+                            <th>الحالة</th>
+                            <th>تعليق</th>
+                            <th>ملاحظات</th>
+                            <th>حذف</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="footer-note">
+                        يتم حفظ الأعمال داخل متصفحك (localStorage) ويمكن تعديلها مباشرة من الجدول أو استيرادها من ملف Excel.
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    let tasks = [];
+    let dataTable;
+    let fieldChart, weekChart;
+
+    const STORAGE_KEY = "mutaba_tasks_full_v2";
+
+    const weekDates = {
+        "الأسبوع التمهيدي": "1447/2/24 هـ",
+        "الأسبوع الأول": "1447/3/1 هـ",
+        "الأسبوع الثاني": "1447/3/8 هـ",
+        "الأسبوع الثالث": "1447/3/15 هـ",
+        "الأسبوع الرابع": "1447/3/22 هـ",
+        "الأسبوع الخامس": "1447/3/29 هـ",
+        "الأسبوع السادس": "1447/4/6 هـ",
+        "الأسبوع السابع": "1447/4/13 هـ",
+        "الأسبوع الثامن": "1447/4/20 هـ",
+        "الأسبوع التاسع": "1447/4/27 هـ",
+        "الأسبوع العاشر": "1447/5/4 هـ",
+        "الأسبوع الحادي عشر": "1447/5/11 هـ",
+        "الأسبوع الثاني عشر": "1447/5/18 هـ",
+        "الأسبوع الثالث عشر": "1447/5/25 هـ",
+        "الأسبوع الرابع عشر": "1447/6/9 هـ",
+        "الأسبوع الخامس عشر": "1447/6/16 هـ",
+        "الأسبوع السادس عشر": "1447/6/23 هـ",
+        "الأسبوع السابع عشر": "1447/7/1 هـ",
+        "الأسبوع الثامن عشر": "1447/7/8 هـ"
+    };
+
+    function normalizeStatus(value) {
+        if (!value) return "غير محدد";
+        const v = String(value).trim();
+        if (v.includes("تم")) return "تم";
+        if (v.includes("جاري") || v.includes("قيد")) return "قيد التنفيذ";
+        if (v.includes("متأخر")) return "متأخر";
+        if (v.includes("لم")) return "لم يبدأ";
+        return v;
+    }
+
+    function normalizeWeek(value) {
+        if (!value) return "";
+        let v = String(value).trim();
+        // توحيد كلمة الأسبوع بدون همزة أو مع أخطاء بسيطة
+        v = v.replace(/^اسبوع/i, "الأسبوع")
+             .replace(/^الاسبوع/i, "الأسبوع")
+             .replace(/^لاسبوع/i, "الأسبوع")
+             .replace(/^لأسبوع/i, "الأسبوع");
+
+        // إزالة المسافات المكررة
+        v = v.replace(/\s+/g, " ");
+
+        // الأسبوع التمهيدي
+        if (v.includes("تمهيدي")) return "الأسبوع التمهيدي";
+
+        // أشكال مختلفة للأول
+        if (v.includes("الأول") || v.includes("الاول")) return "الأسبوع الأول";
+        if (v.includes("الثاني")) return "الأسبوع الثاني";
+        if (v.includes("الثالث")) return "الأسبوع الثالث";
+        if (v.includes("الرابع")) return "الأسبوع الرابع";
+        if (v.includes("الخامس")) return "الأسبوع الخامس";
+        if (v.includes("السادس")) return "الأسبوع السادس";
+        if (v.includes("السابع")) return "الأسبوع السابع";
+        if (v.includes("الثامن")) return "الأسبوع الثامن";
+        if (v.includes("التاسع")) return "الأسبوع التاسع";
+        if (v.includes("العاشر")) return "الأسبوع العاشر";
+        if (v.includes("الحادي عشر")) return "الأسبوع الحادي عشر";
+        if (v.includes("الثاني عشر")) return "الأسبوع الثاني عشر";
+        if (v.includes("الثالث عشر")) return "الأسبوع الثالث عشر";
+        if (v.includes("الرابع عشر")) return "الأسبوع الرابع عشر";
+        if (v.includes("الخامس عشر")) return "الأسبوع الخامس عشر";
+        if (v.includes("السادس عشر")) return "الأسبوع السادس عشر";
+        if (v.includes("السابع عشر")) return "الأسبوع السابع عشر";
+        if (v.includes("الثامن عشر")) return "الأسبوع الثامن عشر";
+
+        return v;
+    }
+
+    function persistTasks() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch (e) {
+            console.warn("تعذر حفظ البيانات في المتصفح", e);
+        }
+    }
+
+    function loadTasksFromStorage() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                tasks = parsed.map(t => {
+                    const w = normalizeWeek(t.week || "");
+                    return {
+                        work: t.work || "",
+                        field: t.field || "",
+                        week: w,
+                        date: t.date || (weekDates[w] || ""),
+                        owner: t.owner || "",
+                        _status: normalizeStatus(t._status || t.status || ""),
+                        comment: t.comment || "",
+                        notes: t.notes || ""
+                    };
+                });
+                updateKpis();
+                rebuildCharts();
+                rebuildTable();
+            }
+        } catch (e) {
+            console.warn("تعذر قراءة البيانات من المتصفح", e);
+        }
+    }
+
+    function updateKpis() {
+        const total = tasks.length;
+        const done = tasks.filter(t => t._status === "تم").length;
+        const inProgress = tasks.filter(t => t._status === "قيد التنفيذ").length;
+        const others = total - done;
+
+        const completion = total ? Math.round((done / total) * 100) : 0;
+
+        document.getElementById("kpiCompletion").textContent = completion + "%";
+        document.getElementById("kpiDone").textContent = done;
+        document.getElementById("kpiActive").textContent = inProgress + (others - inProgress);
+    }
+
+    function destroyChart(ch) {
+        if (ch) ch.destroy();
+    }
+
+    function groupBy(list, keyFn) {
+        const map = {};
+        list.forEach(item => {
+            const key = keyFn(item) || "غير محدد";
+            map[key] = (map[key] || 0) + 1;
+        });
+        return map;
+    }
+
+    function rebuildCharts() {
+        const ctxField = document.getElementById("fieldChart");
+        const ctxWeek = document.getElementById("weekChart");
+
+        destroyChart(fieldChart);
+        destroyChart(weekChart);
+
+        const fieldCounts = groupBy(tasks, t => t.field);
+        fieldChart = new Chart(ctxField, {
+            type: "doughnut",
+            data: {
+                labels: Object.keys(fieldCounts),
+                datasets: [{
+                    data: Object.values(fieldCounts)
+                }]
+            },
+            options: {
+                plugins: { legend: { position: "bottom" } }
+            }
+        });
+
+        const weekCounts = groupBy(tasks, t => t.week);
+        const orderedWeeks = Object.keys(weekDates).filter(w => weekCounts[w]);
+        weekChart = new Chart(ctxWeek, {
+            type: "line",
+            data: {
+                labels: orderedWeeks,
+                datasets: [{
+                    data: orderedWeeks.map(w => weekCounts[w] || 0),
+                    tension: 0.3
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function getActiveFilters() {
+        const fw = document.getElementById("filterWeek");
+        const fo = document.getElementById("filterOwner");
+        const fs = document.getElementById("filterStatus");
+        return {
+            week: fw ? normalizeWeek(fw.value) : "",
+            owner: fo ? fo.value.trim() : "",
+            status: fs ? fs.value.trim() : ""
+        };
+    }
+
+    function getFilteredTasks() {
+        const filters = getActiveFilters();
+        return tasks.filter(t => {
+            let ok = true;
+            const tWeek = normalizeWeek(t.week || "");
+            const tOwner = (t.owner || "").trim();
+            const tStatus = (t._status || "").trim();
+            if (filters.week) ok = ok && tWeek === filters.week;
+            if (filters.owner) ok = ok && tOwner === filters.owner;
+            if (filters.status) ok = ok && tStatus === filters.status;
+            return ok;
+        });
+    }
+
+    function applyRowStatusClass(tr, status) {
+        tr.classList.remove("row-done", "row-progress", "row-late");
+        const s = normalizeStatus(status);
+        if (s === "تم") {
+            tr.classList.add("row-done");
+        } else if (s === "قيد التنفيذ") {
+            tr.classList.add("row-progress");
+        } else {
+            tr.classList.add("row-late");
+        }
+    }
+
+    function rebuildTable() {
+        const tbody = document.querySelector("#tasksTable tbody");
+
+        // تدمير الجدول القديم إن وجد
+        if (dataTable) {
+            dataTable.destroy();
+            dataTable = null;
+        }
+
+        // تفريغ الصفوف
+        tbody.innerHTML = "";
+
+        // الحصول على البيانات بعد تطبيق الفلاتر
+        const filtered = getFilteredTasks();
+
+        // بناء الصفوف
+        filtered.forEach((t, i) => {
+            const idx = tasks.indexOf(t);
+            const tr = document.createElement("tr");
+            tr.dataset.idx = idx;
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td contenteditable="true" data-field="work">${t.work}</td>
+                <td contenteditable="true" data-field="field">${t.field}</td>
+                <td contenteditable="true" data-field="week">${t.week}</td>
+                <td contenteditable="true" data-field="date">${t.date}</td>
+                <td contenteditable="true" data-field="owner">${t.owner}</td>
+                <td contenteditable="true" data-field="_status">${t._status}</td>
+                <td contenteditable="true" data-field="comment">${t.comment}</td>
+                <td contenteditable="true" data-field="notes">${t.notes}</td>
+                <td><button type="button" class="btn-delete" title="حذف">🗑</button></td>
+            `;
+            applyRowStatusClass(tr, t._status);
+            tbody.appendChild(tr);
+        });
+
+        // إعادة تهيئة DataTable على البيانات الحالية
+        dataTable = new DataTable("#tasksTable", {
+            language: { url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/ar.json" },
+            pageLength: 25
+        });
+    }
+
+    // تحديث نص تاريخ الأسبوعخ الأسبوع
+    const weekSelect = document.getElementById("weekInput");
+    const weekDateLabel = document.getElementById("weekDateLabel");
+    weekSelect.addEventListener("change", () => {
+        const w = weekSelect.value;
+        if (weekDates[w]) {
+            weekDateLabel.textContent = weekDates[w];
+        } else {
+            weekDateLabel.textContent = "لم يتم اختيار أسبوع";
+        }
+    });
+
+    // إضافة عمل جديد
+    const form = document.getElementById("taskForm");
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const work = document.getElementById("workInput").value.trim();
+        if (!work) return;
+
+        const field = document.getElementById("fieldInput").value;
+        const weekRaw = document.getElementById("weekInput").value;
+        const week = normalizeWeek(weekRaw);
+        if (!week) {
+            alert("فضلاً اختر الأسبوع.");
+            return;
+        }
+        const date = weekDates[week] || "";
+        const owner = document.getElementById("ownerInput").value;
+        const statusRaw = document.getElementById("statusInput").value;
+        const status = normalizeStatus(statusRaw);
+        const comment = document.getElementById("commentInput").value.trim();
+        const notes = document.getElementById("notesInput").value.trim();
+
+        const task = { work, field, week, date, owner, _status: status, comment, notes };
+        tasks.push(task);
+
+        persistTasks();
+        updateKpis();
+        rebuildCharts();
+        rebuildTable();
+
+        form.reset();
+        weekDateLabel.textContent = "لم يتم اختيار أسبوع";
+        document.getElementById("workInput").focus();
+    });
+
+    // تعديل مباشر من الجدول
+    const tbodyEl = document.querySelector("#tasksTable tbody");
+    tbodyEl.addEventListener("blur", (e) => {
+        const cell = e.target;
+        if (!cell.matches("[contenteditable][data-field]")) return;
+        const tr = cell.closest("tr");
+        if (!tr) return;
+        const idx = parseInt(tr.dataset.idx, 10);
+        if (isNaN(idx) || !tasks[idx]) return;
+
+        const field = cell.dataset.field;
+        let val = cell.textContent.trim();
+
+        if (field === "week") {
+            const w = normalizeWeek(val);
+            tasks[idx].week = w;
+            if (weekDates[w]) {
+                tasks[idx].date = weekDates[w];
+                const dateCell = tr.querySelector('[data-field="date"]');
+                if (dateCell) dateCell.textContent = tasks[idx].date;
+            }
+        } else if (field === "_status") {
+            tasks[idx]._status = normalizeStatus(val);
+            cell.textContent = tasks[idx]._status;
+            applyRowStatusClass(tr, tasks[idx]._status);
+        } else if (field === "date") {
+            tasks[idx].date = val;
+        } else if (field === "work" || field === "field" || field === "owner" ||
+                   field === "comment" || field === "notes") {
+            tasks[idx][field] = val;
+        }
+
+        persistTasks();
+        updateKpis();
+        rebuildCharts();
+    }, true);
+
+    // حذف سجل من الجدول
+    tbodyEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".btn-delete");
+        if (!btn) return;
+        const tr = btn.closest("tr");
+        if (!tr) return;
+        const idx = parseInt(tr.dataset.idx, 10);
+        if (isNaN(idx) || !tasks[idx]) return;
+        if (!confirm("هل تريد حذف هذا العمل؟")) return;
+        tasks.splice(idx, 1);
+        persistTasks();
+        updateKpis();
+        rebuildCharts();
+        rebuildTable();
+    });
+
+    // ربط الفلاتر
+    const fw = document.getElementById("filterWeek");
+    const fo = document.getElementById("filterOwner");
+    const fs = document.getElementById("filterStatus");
+    if (fw) fw.addEventListener("change", () => rebuildTable());
+    if (fo) fo.addEventListener("change", () => rebuildTable());
+    if (fs) fs.addEventListener("change", () => rebuildTable());
+
+    // استيراد من Excel
+    function findColumnIndex(headers, candidates) {
+        const normalized = headers.map(h => String(h || "").trim());
+        for (const cand of candidates) {
+            const c = String(cand).trim();
+            let idx = normalized.findIndex(h => h === c);
+            if (idx !== -1) return idx;
+            idx = normalized.findIndex(h => h.includes(c) || c.includes(h));
+            if (idx !== -1) return idx;
+        }
+        return -1;
+    }
+
+    function importFromExcelFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+                const firstSheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[firstSheetName];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+                if (!rows.length) {
+                    alert("لم يتم العثور على بيانات في ملف Excel.");
+                    return;
+                }
+
+                const headers = rows[0];
+                const body = rows.slice(1);
+
+                const idxWork   = findColumnIndex(headers, ["العمل", "المهمة", "الإجراء"]);
+                const idxField  = findColumnIndex(headers, ["المجال", "مجال التنفيذ"]);
+                const idxWeek   = findColumnIndex(headers, ["الأسبوع", "الاسبوع"]);
+                const idxDate   = findColumnIndex(headers, ["التاريخ", "تاريخ الأسبوع"]);
+                const idxOwner  = findColumnIndex(headers, ["المنفذ", "المسؤول"]);
+                const idxStatus = findColumnIndex(headers, ["الحالة", "حالة التنفيذ"]);
+                const idxComment= findColumnIndex(headers, ["تعليق", "تعليق المسؤول"]);
+                const idxNotes  = findColumnIndex(headers, ["ملاحظات", "ملاحظة"]);
+
+                let importedCount = 0;
+                body.forEach((row) => {
+                    const cells = row;
+                    const work = idxWork >= 0 ? String(cells[idxWork]).trim() : "";
+                    if (!work) return;
+
+                    const field = idxField >= 0 ? String(cells[idxField]).trim() : "";
+                    const weekRaw  = idxWeek >= 0 ? String(cells[idxWeek]).trim() : "";
+                    const week  = normalizeWeek(weekRaw);
+                    let date    = idxDate >= 0 ? String(cells[idxDate]).trim() : "";
+                    const owner = idxOwner >= 0 ? String(cells[idxOwner]).trim() : "";
+                    const statusRaw = idxStatus >= 0 ? String(cells[idxStatus]).trim() : "";
+                    const status    = normalizeStatus(statusRaw);
+                    const comment   = idxComment >= 0 ? String(cells[idxComment]).trim() : "";
+                    const notes     = idxNotes >= 0 ? String(cells[idxNotes]).trim() : "";
+
+                    if (!date && weekDates[week]) {
+                        date = weekDates[week];
+                    }
+
+                    const task = { work, field, week, date, owner, _status: status, comment, notes };
+                    tasks.push(task);
+                    importedCount++;
+                });
+
+                if (!importedCount) {
+                    alert("لم يتم استيراد أي صف. تأكد من أن ملف Excel يحتوي على أعمدة: العمل، المجال، الأسبوع، المنفذ، الحالة.");
+                    return;
+                }
+
+                persistTasks();
+                updateKpis();
+                rebuildCharts();
+                rebuildTable();
+
+                alert("تم استيراد " + importedCount + " من الأعمال من Excel بنجاح.");
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ أثناء قراءة ملف Excel.");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    const inputExcel = document.getElementById("excelFileInput");
+    const btnImport = document.getElementById("btnImportExcel");
+    if (btnImport && inputExcel) {
+        btnImport.addEventListener("click", () => inputExcel.click());
+        inputExcel.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                importFromExcelFile(file);
+                e.target.value = "";
+            }
+        });
+    }
+
+    // تصدير إلى Excel
+    function exportToExcel() {
+        const rows = getFilteredTasks();
+        if (!rows.length) {
+            alert("لا توجد بيانات للتصدير.");
+            return;
+        }
+        const header = ["م", "العمل", "المجال", "الأسبوع", "تاريخ الأسبوع", "المنفذ", "الحالة", "تعليق", "ملاحظات"];
+        const data = rows.map((t, i) => [
+            i + 1,
+            t.work || "",
+            t.field || "",
+            t.week || "",
+            t.date || "",
+            t.owner || "",
+            t._status || "",
+            t.comment || "",
+            t.notes || ""
+        ]);
+        const aoa = [header, ...data];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        XLSX.utils.book_append_sheet(wb, ws, "الأعمال");
+        XLSX.writeFile(wb, "mutaba_tasks.xlsx");
+    }
+
+    // تصدير إلى PDF
+    function exportToPDF() {
+        const rows = getFilteredTasks();
+        if (!rows.length) {
+            alert("لا توجد بيانات للتصدير.");
+            return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF("l", "pt", "a4");
+
+        const head = [["م", "العمل", "المجال", "الأسبوع", "التاريخ", "المنفذ", "الحالة", "تعليق", "ملاحظات"]];
+        const body = rows.map((t, i) => [
+            String(i + 1),
+            t.work || "",
+            t.field || "",
+            t.week || "",
+            t.date || "",
+            t.owner || "",
+            t._status || "",
+            t.comment || "",
+            t.notes || ""
+        ]);
+
+        doc.setFontSize(12);
+        doc.text("تقرير متابعة تنفيذ الأعمال", doc.internal.pageSize.getWidth() - 40, 30, { align: "right" });
+
+        doc.autoTable({
+            head,
+            body,
+            startY: 40,
+            styles: { fontSize: 8 },
+            margin: { right: 20, left: 20 }
+        });
+
+        doc.save("mutaba_tasks.pdf");
+    }
+
+    document.getElementById("btnExportExcel").addEventListener("click", exportToExcel);
+    document.getElementById("btnExportPDF").addEventListener("click", exportToPDF);
+
+    // حذف جميع السجلات
+    const btnDeleteAll = document.getElementById("btnDeleteAll");
+    if (btnDeleteAll) {
+        btnDeleteAll.addEventListener("click", () => {
+            if (!tasks.length) {
+                alert("لا توجد سجلات لحذفها.");
+                return;
+            }
+            if (!confirm("هل تريد حذف جميع السجلات؟ هذا الإجراء لا يمكن التراجع عنه.")) return;
+            tasks = [];
+            persistTasks();
+            updateKpis();
+            rebuildCharts();
+            rebuildTable();
+        });
+    }
+
+    
+    // زر مسح الفلاتر وإعادة تعيين الجدول
+    const btnResetFilters = document.getElementById("btnResetFilters");
+    if (btnResetFilters) {
+        btnResetFilters.addEventListener("click", () => {
+            const fw = document.getElementById("filterWeek");
+            const fo = document.getElementById("filterOwner");
+            const fs = document.getElementById("filterStatus");
+            if (fw) fw.value = "";
+            if (fo) fo.value = "";
+            if (fs) fs.value = "";
+            rebuildTable();
+        });
+    }
+
+// تحميل البيانات المحفوظة عند فتح الصفحة
+    loadTasksFromStorage();
+
+    // شاشة تسجيل الدخول داخل نفس الصفحة
+    (function() {
+        const VALID_USER = "admin";
+        const VALID_PASS = "12";
+        const form = document.getElementById("loginForm");
+        const errorBox = document.getElementById("errorBox");
+        const loginScreen = document.getElementById("loginScreen");
+        const mainApp = document.getElementById("mainApp");
+
+        if (form) {
+            form.addEventListener("submit", function(e) {
+                e.preventDefault();
+                const u = document.getElementById("username").value.trim();
+                const p = document.getElementById("password").value.trim();
+                if (u === VALID_USER && p === VALID_PASS) {
+                    errorBox.style.display = "none";
+                    // إظهار لوحة المتابعة وإخفاء شاشة الدخول
+                    if (loginScreen) loginScreen.style.display = "none";
+                    if (mainApp) mainApp.style.display = "block";
+                } else {
+                    errorBox.style.display = "block";
+                }
+            });
+        }
+    })();
+</script>
+</body>
+</html>
