@@ -807,39 +807,58 @@
     }
 
     function persistTasks() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-        } catch (e) {
-            console.warn("تعذر حفظ البيانات في المتصفح", e);
-        }
+        // إرسال آخر صف فقط (يمكنك تعديلها لإرسال كل الصفوف)
+        const lastTask = tasks[tasks.length - 1];
+        if (!lastTask) return;
+        fetch('http://localhost:3000/api/sheet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                row: [
+                    lastTask.work,
+                    lastTask.field,
+                    lastTask.week,
+                    lastTask.date,
+                    lastTask.owner,
+                    lastTask._status,
+                    lastTask.comment,
+                    lastTask.notes
+                ]
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) alert("تعذر حفظ العمل في Google Sheets");
+        })
+        .catch(e => alert("خطأ في الاتصال بالخادم"));
     }
 
     function loadTasksFromStorage() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-                tasks = parsed.map(t => {
-                    const w = normalizeWeek(t.week || "");
-                    return {
-                        work: t.work || "",
-                        field: t.field || "",
-                        week: w,
-                        date: t.date || (weekDates[w] || ""),
-                        owner: t.owner || "",
-                        _status: normalizeStatus(t._status || t.status || ""),
-                        comment: t.comment || "",
-                        notes: t.notes || ""
-                    };
-                });
-                updateKpis();
-                rebuildCharts();
-                rebuildTable();
-            }
-        } catch (e) {
-            console.warn("تعذر قراءة البيانات من المتصفح", e);
-        }
+        fetch('http://localhost:3000/api/sheet')
+            .then(res => res.json())
+            .then(parsed => {
+                if (Array.isArray(parsed)) {
+                    tasks = parsed.map((row) => {
+                        // تأكد من ترتيب الأعمدة حسب الجدول
+                        const [work, field, week, date, owner, _status, comment, notes] = row;
+                        const w = normalizeWeek(week || "");
+                        return {
+                            work: work || "",
+                            field: field || "",
+                            week: w,
+                            date: date || (weekDates[w] || ""),
+                            owner: owner || "",
+                            _status: normalizeStatus(_status || ""),
+                            comment: comment || "",
+                            notes: notes || ""
+                        };
+                    });
+                    updateKpis();
+                    rebuildCharts();
+                    rebuildTable();
+                }
+            })
+            .catch(e => console.warn("تعذر جلب البيانات من الخادم", e));
     }
 
     function updateKpis() {
