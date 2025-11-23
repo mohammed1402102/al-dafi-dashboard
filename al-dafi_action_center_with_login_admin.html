@@ -1152,6 +1152,37 @@
         return -1;
     }
 
+    function sendRowsInBatches(rows, batchSize, callback) {
+        let index = 0;
+        function sendNextBatch() {
+            const batch = rows.slice(index, index + batchSize);
+            if (!batch.length) {
+                callback && callback();
+                return;
+            }
+            fetch('http://localhost:3000/api/sheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ row: batch })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    alert("تعذر حفظ دفعة من الأعمال في Google Sheets");
+                    callback && callback();
+                    return;
+                }
+                index += batchSize;
+                sendNextBatch();
+            })
+            .catch(e => {
+                alert("خطأ في الاتصال بالخادم أثناء حفظ دفعة من الأعمال");
+                callback && callback();
+            });
+        }
+        sendNextBatch();
+    }
+
     function importFromExcelFile(file) {
         window._excelImporting = true;
         const reader = new FileReader();
@@ -1213,40 +1244,26 @@
                     return;
                 }
 
-                // إرسال جميع الصفوف دفعة واحدة إلى الخادم
-                fetch('http://localhost:3000/api/sheet', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        row: importedTasks.map(t => [
-                            t.work,
-                            t.field,
-                            t.week,
-                            t.date,
-                            t.owner,
-                            t._status,
-                            t.comment,
-                            t.notes
-                        ])
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
+                // تقسيم الصفوف إلى دفعات (مثلاً 100 صف)
+                const batchSize = 100;
+                const rowsToSend = importedTasks.map(t => [
+                    t.work,
+                    t.field,
+                    t.week,
+                    t.date,
+                    t.owner,
+                    t._status,
+                    t.comment,
+                    t.notes
+                ]);
+                sendRowsInBatches(rowsToSend, batchSize, function() {
                     window._excelImporting = false;
-                    if (!data.success) {
-                        alert("تعذر حفظ الأعمال في Google Sheets");
-                    } else {
-                        alert("تم استيراد " + importedCount + " من الأعمال من Excel بنجاح.");
-                        // أضف الصفوف إلى الواجهة
-                        tasks = tasks.concat(importedTasks);
-                        updateKpis();
-                        rebuildCharts();
-                        rebuildTable();
-                    }
-                })
-                .catch(e => {
-                    window._excelImporting = false;
-                    alert("خطأ في الاتصال بالخادم");
+                    alert("تم استيراد " + importedCount + " من الأعمال من Excel بنجاح.");
+                    // أضف الصفوف إلى الواجهة
+                    tasks = tasks.concat(importedTasks);
+                    updateKpis();
+                    rebuildCharts();
+                    rebuildTable();
                 });
             } catch (err) {
                 window._excelImporting = false;
