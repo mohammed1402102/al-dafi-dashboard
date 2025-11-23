@@ -807,30 +807,56 @@
     }
 
     function persistTasks() {
-        // إرسال آخر صف فقط (يمكنك تعديلها لإرسال كل الصفوف)
-        const lastTask = tasks[tasks.length - 1];
-        if (!lastTask) return;
-        fetch('http://localhost:3000/api/sheet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                row: [
-                    lastTask.work,
-                    lastTask.field,
-                    lastTask.week,
-                    lastTask.date,
-                    lastTask.owner,
-                    lastTask._status,
-                    lastTask.comment,
-                    lastTask.notes
-                ]
+        // إذا كان هناك استيراد جماعي من Excel (tasks.length > 1)
+        if (tasks.length > 1 && window._excelImporting) {
+            fetch('http://localhost:3000/api/sheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    row: tasks.map(t => [
+                        t.work,
+                        t.field,
+                        t.week,
+                        t.date,
+                        t.owner,
+                        t._status,
+                        t.comment,
+                        t.notes
+                    ])
+                })
             })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (!data.success) alert("تعذر حفظ العمل في Google Sheets");
-        })
-        .catch(e => alert("خطأ في الاتصال بالخادم"));
+            .then(res => res.json())
+            .then(data => {
+                window._excelImporting = false;
+                if (!data.success) alert("تعذر حفظ الأعمال في Google Sheets");
+            })
+            .catch(e => alert("خطأ في الاتصال بالخادم"));
+        } else {
+            // إرسال آخر صف فقط عند الإضافة اليدوية
+            const lastTask = tasks[tasks.length - 1];
+            if (!lastTask) return;
+            fetch('http://localhost:3000/api/sheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    row: [
+                        lastTask.work,
+                        lastTask.field,
+                        lastTask.week,
+                        lastTask.date,
+                        lastTask.owner,
+                        lastTask._status,
+                        lastTask.comment,
+                        lastTask.notes
+                    ]
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) alert("تعذر حفظ العمل في Google Sheets");
+            })
+            .catch(e => alert("خطأ في الاتصال بالخادم"));
+        }
     }
 
     function loadTasksFromStorage() {
@@ -1127,6 +1153,7 @@
     }
 
     function importFromExcelFile(file) {
+        window._excelImporting = true;
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
