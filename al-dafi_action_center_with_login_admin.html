@@ -1165,6 +1165,7 @@
 
                 if (!rows.length) {
                     alert("لم يتم العثور على بيانات في ملف Excel.");
+                    window._excelImporting = false;
                     return;
                 }
 
@@ -1181,6 +1182,7 @@
                 const idxNotes  = findColumnIndex(headers, ["ملاحظات", "ملاحظة"]);
 
                 let importedCount = 0;
+                let importedTasks = [];
                 body.forEach((row) => {
                     const cells = row;
                     const work = idxWork >= 0 ? String(cells[idxWork]).trim() : "";
@@ -1201,22 +1203,53 @@
                     }
 
                     const task = { work, field, week, date, owner, _status: status, comment, notes };
-                    tasks.push(task);
+                    importedTasks.push(task);
                     importedCount++;
                 });
 
                 if (!importedCount) {
                     alert("لم يتم استيراد أي صف. تأكد من أن ملف Excel يحتوي على أعمدة: العمل، المجال، الأسبوع، المنفذ، الحالة.");
+                    window._excelImporting = false;
                     return;
                 }
 
-                persistTasks();
-                updateKpis();
-                rebuildCharts();
-                rebuildTable();
-
-                alert("تم استيراد " + importedCount + " من الأعمال من Excel بنجاح.");
+                // إرسال جميع الصفوف دفعة واحدة إلى الخادم
+                fetch('http://localhost:3000/api/sheet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        row: importedTasks.map(t => [
+                            t.work,
+                            t.field,
+                            t.week,
+                            t.date,
+                            t.owner,
+                            t._status,
+                            t.comment,
+                            t.notes
+                        ])
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    window._excelImporting = false;
+                    if (!data.success) {
+                        alert("تعذر حفظ الأعمال في Google Sheets");
+                    } else {
+                        alert("تم استيراد " + importedCount + " من الأعمال من Excel بنجاح.");
+                        // أضف الصفوف إلى الواجهة
+                        tasks = tasks.concat(importedTasks);
+                        updateKpis();
+                        rebuildCharts();
+                        rebuildTable();
+                    }
+                })
+                .catch(e => {
+                    window._excelImporting = false;
+                    alert("خطأ في الاتصال بالخادم");
+                });
             } catch (err) {
+                window._excelImporting = false;
                 console.error(err);
                 alert("حدث خطأ أثناء قراءة ملف Excel.");
             }
